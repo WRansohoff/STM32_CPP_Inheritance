@@ -148,7 +148,7 @@ pGPIO::pGPIO(GPIO_TypeDef* bank) {
   }
 #endif
   // TODO: Any more GPIO banks on larger chips?
-  status = pSTATUS_GPIO_SET;
+  status = pSTATUS_SET;
 }
 
 /*
@@ -171,30 +171,16 @@ void pGPIO::write(unsigned dat) {
 }
 
 /*
- * Enable the current GPIO bank.
+ * Stream a series of values to the GPIO pins.
+ * I don't see why you would, but maybe I can add timed delays.
  */
-void pGPIO::clock_en(void) {
+void pGPIO::stream(volatile void* buf, int len) {
+  volatile uint32_t* gpiobuf = (volatile uint32_t*) buf;
   if (status == pSTATUS_ERR) { return; }
-  *enable_reg |= enable_bit;
-  status = pSTATUS_GPIO_ON;
-}
-
-/*
- * Reset the GPIO bank peripheral.
- */
-void pGPIO::reset(void) {
-  if (status == pSTATUS_ERR) { return; }
-  *reset_reg |= reset_bit;
-  *reset_reg &= ~(reset_bit);
-}
-
-/*
- * Turn the GPIO bank off.
- */
-void pGPIO::disable(void) {
-  if (status == pSTATUS_ERR) { return; }
-  *enable_reg &= ~(enable_bit);
-  status = pSTATUS_GPIO_SET;
+  // Write all of the values, one by one.
+  for (int si = 0; si < len; ++si) {
+    write(gpiobuf[si]);
+  }
 }
 
 /*
@@ -501,7 +487,7 @@ pGPIO_pin::pGPIO_pin(pGPIO* pin_bank, uint8_t pin_num,
     }
   #endif
   // Mark the pin status as initialized.
-  status = pSTATUS_GPIO_PIN_SET;
+  status = pSTATUS_SET;
 }
 
 /* Turn the GPIO pin on ('1') */

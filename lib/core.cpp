@@ -22,14 +22,29 @@ unsigned pIO::read(void) { return 0; }
 // Write the peripheral's default data width (up to a word)
 void pIO::write(unsigned dat) {}
 
+// Write multiple words to the peripheral in a stream.
+void pIO::stream(volatile void* buf, int len) {}
+
 // Enable the peripheral clock.
-void pIO::clock_en(void) {}
+void pIO::clock_en(void) {
+  if (status == pSTATUS_ERR) { return; }
+  *enable_reg |= enable_bit;
+  status = pSTATUS_ON;
+}
 
 // Reset the peripheral.
-void pIO::reset(void) {}
+void pIO::reset(void) {
+  if (status == pSTATUS_ERR) { return; }
+  *reset_reg |= reset_bit;
+  *reset_reg &= ~(reset_bit);
+}
 
 // Turn the peripheral off.
-void pIO::disable(void) {}
+void pIO::disable(void) {
+  if (status == pSTATUS_ERR) { return; }
+  *enable_reg &= ~(enable_bit);
+  status = pSTATUS_SET;
+}
 
 // Return the current peripheral status,
 // as far as the library knows.

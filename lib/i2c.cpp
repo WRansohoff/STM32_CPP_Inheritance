@@ -17,7 +17,7 @@ pI2C::pI2C(I2C_TypeDef* i2c_regs) {
     status = pSTATUS_ERR;
     return;
   }
-  status = pSTATUS_I2C_SET;
+  status = pSTATUS_SET;
 }
 
 /*
@@ -55,25 +55,44 @@ void pI2C::write(unsigned dat) {
 }
 
 /*
- * Enable the I2C clock (required to turn the peripheral on.)
+ * Stream a whole bunch of bytes from a buffer.
+ * Note: This does not handle setting the device address
+ *       or required start/stop conditions.
  */
-void pI2C::clock_en(void) {
-  *enable_reg |= enable_bit;
-}
-
-/*
- * Reset the I2C peripheral.
- */
-void pI2C::reset(void) {
-  *reset_reg |= reset_bit;
-  *reset_reg &= ~(reset_bit);
-}
-
-/*
- * Disable the I2C peripheral.
- */
-void pI2C::disable(void) {
-  *enable_reg &= ~(enable_bit);
+void pI2C::stream(volatile void* buf, int len) {
+  volatile uint8_t *i2cbuf = (volatile uint8_t*) buf;
+  #if    defined(STARm_F3)
+    // The more recent chips have an internal counter to keep
+    // track of how many bytes they send/receive, and it's
+    // limited to 255 bytes at once, so we need to manage that.
+    // NOTE: The 'RELOAD' flag must be set prior to this call.
+    volatile int pos = 0;
+    int nb_i = 0;
+    // Send 255 bytes at a time, until there's <255B left.
+    while ((len - pos) > 255) {
+      set_num_bytes(255);
+      for (nb_i = 0; nb_i < 255; ++nb_i) {
+        write(i2cbuf[pos]);
+        ++pos;
+      }
+    }
+    // Stream the remaining bytes.
+    if (pos < len) {
+      int remaining_bytes = len - pos;
+      set_num_bytes(remaining_bytes);
+      for (nb_i = 0; nb_i < remaining_bytes; ++nb_i) {
+        write(i2cbuf[pos]);
+        ++pos;
+      }
+    }
+  #elif  STARm_F1
+    // The F1 series have a simpler 'transmit' process
+    // for longer frames; you just send all of the bytes.
+    int nb_i = 0;
+    for (nb_i = 0; nb_i < len; ++nb_i) {
+      write(i2cbuf[nb_i]);
+    }
+  #endif
 }
 
 /*
@@ -130,7 +149,7 @@ void pI2C::i2c_init(void) {
     // Enable the peripheral.
     i2c->CR1     |=  (I2C_CR1_PE);
   #endif
-  status = pSTATUS_I2C_ON;
+  status = pSTATUS_RUN;
 }
 
 /*
@@ -173,52 +192,12 @@ void pI2C::stop(void) {
   i2c->ICR |=  (I2C_ICR_STOPCF);
   while ((i2c->ICR & I2C_ICR_STOPCF)) {}
   // Ensure that the 'RELOAD' flag is un-set.
-  i2c->CR2 &= ~(I2C_CR2_RELOAD);
+  set_reload_flag(0);
 #elif  STARm_F1
   // Send 'Stop' condition, and wait for acknowledge.
   i2c->CR1 |=  (I2C_CR1_STOP);
   while (i2c->SR2 & I2C_SR2_MSL) {};
 #endif
-}
-
-/*
- * Stream a whole bunch of bytes from a buffer.
- * Note: This does not handle setting the device address
- *       or required start/stop conditions.
- */
-void pI2C::write_bytes(volatile uint8_t* buf, int len) {
-  #if    defined(STARm_F3)
-    // The more recent chips have an internal counter to keep
-    // track of how many bytes they send/receive, and it's
-    // limited to 255 bytes at once, so we need to manage that.
-    // NOTE: The 'RELOAD' flag must be set prior to this call.
-    volatile int pos = 0;
-    int nb_i = 0;
-    // Send 255 bytes at a time, until there's <255B left.
-    while ((len - pos) > 255) {
-      set_num_bytes(255);
-      for (nb_i = 0; nb_i < 255; ++nb_i) {
-        write(buf[pos]);
-        ++pos;
-      }
-    }
-    // Stream the remaining bytes.
-    if (pos < len) {
-      int remaining_bytes = len - pos;
-      set_num_bytes(remaining_bytes);
-      for (nb_i = 0; nb_i < remaining_bytes; ++nb_i) {
-        write(buf[pos]);
-        ++pos;
-      }
-    }
-  #elif  STARm_F1
-    // The F1 series have a simpler 'transmit' process
-    // for longer frames; you just send all of the bytes.
-    int nb_i = 0;
-    for (nb_i = 0; nb_i < len; ++nb_i) {
-      write(buf[nb_i]);
-    }
-  #endif
 }
 
 #if defined(STARm_F3)
@@ -232,6 +211,18 @@ void pI2C::set_num_bytes(uint8_t nbytes) {
   // Set number of bytes to process in the next transmission.
   i2c->CR2 &= ~(I2C_CR2_NBYTES);
   i2c->CR2 |=  (nbytes << I2C_CR2_NBYTES_Pos);
+}
+
+/*
+ * Set the 'RELOAD' flag on or off.
+ */
+void pI2C::set_reload_flag(bool reload) {
+  if (reload) {
+    i2c->CR2 |=  I2C_CR2_RELOAD;
+  }
+  else {
+    i2c->CR2 &= ~I2C_CR2_RELOAD;
+  }
 }
 
 #endif

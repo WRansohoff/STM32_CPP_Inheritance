@@ -680,14 +680,14 @@ void pSSD1306::init_display(void) {
 void pSSD1306::draw_framebuffer() {
   #if    defined(STARm_F3)
     // Set the 'RELOAD' flag.
-    i2c->i2c->CR2 |= I2C_CR2_RELOAD;
+    i2c->set_reload_flag(1);
     // Set the device address and send a 'start' condition.
     i2c->set_num_bytes(1);
     i2c->start(0x78);
     // Send one byte to set a 'data' transmission.
     i2c->write(0x40);
     // Send the rest of the framebuffer.
-    i2c->write_bytes(framebuffer, (oled_w*oled_h)/8);
+    i2c->stream((volatile void*)framebuffer, (oled_w*oled_h)/8);
     // Send a 'stop' condition.
     i2c->stop();
   #elif  STARm_F1
@@ -696,7 +696,7 @@ void pSSD1306::draw_framebuffer() {
     // Set a 'data' transmission.
     i2c->write(0x40);
     // Stream the framebuffer.
-    i2c->write_bytes(framebuffer, (oled_w*oled_h)/8);
+    i2c->stream((volatile void*)framebuffer, (oled_w*oled_h)/8);
     // Send a 'stop' condition.
     i2c->stop();
   #endif

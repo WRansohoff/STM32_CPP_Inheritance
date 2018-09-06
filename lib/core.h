@@ -18,6 +18,9 @@
 
 // Global macro definitions.
 #define pSTATUS_ERR (0)
+#define pSTATUS_SET (1)
+#define pSTATUS_ON  (2)
+#define pSTATUS_RUN (3)
 
 // System clock speed; initial value depends on the chip.
 extern volatile uint32_t sys_clock_hz;
@@ -34,6 +37,7 @@ public:
   // Common read/write methods.
   virtual unsigned read(void);
   virtual void     write(unsigned dat);
+  virtual void     stream(volatile void* buf, int len);
   // Common peripheral control methods.
   virtual void     clock_en(void);
   virtual void     reset(void);
@@ -42,6 +46,11 @@ public:
 protected:
   // Expected peripheral status.
   int status = pSTATUS_ERR;
+  // Enable/disable/reset register definitions.
+  __IO uint32_t *enable_reg = 0;
+  __IO uint32_t *reset_reg  = 0;
+  uint32_t       enable_bit = 0;
+  uint32_t       reset_bit  = 0;
 private:
 };
 

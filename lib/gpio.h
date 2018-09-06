@@ -5,11 +5,6 @@
 #include "core.h"
 
 // Project macro definitions.
-// GPIO peripheral status.
-#define pSTATUS_GPIO_SET     (1)
-#define pSTATUS_GPIO_ON      (2)
-// GPIO pin status
-#define pSTATUS_GPIO_PIN_SET (1)
 // GPIO pin state macros.
 #if   defined(STARm_F0) || defined(STARm_F3) || defined(STARm_L0)
   #define pGPIO_MODE_IN        (0x00)
@@ -69,10 +64,7 @@ public:
   // Common r/w methods from the core I/O class.
   unsigned read(void);
   void     write(unsigned dat);
-  // Common peripheral methods from core I/O class.
-  void     clock_en(void);
-  void     reset(void);
-  void     disable(void);
+  void     stream(volatile void* buf, int len);
   // GPIO-specific methods.
   // Generic pin manipulation methods.
   bool     read_pin(unsigned pin_num);
@@ -95,12 +87,6 @@ public:
 protected:
   // Reference GPIO register struct.
   GPIO_TypeDef* gpio        = NULL;
-  // Registers and bits needed by enable/reset/disable methods.
-  // The '__IO' qualifier is from CMSIS includes, ~= 'volatile'.
-  __IO uint32_t *enable_reg = 0;
-  __IO uint32_t *reset_reg  = 0;
-  uint32_t       enable_bit = 0;
-  uint32_t       reset_bit  = 0;
 private:
 };
 

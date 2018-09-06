@@ -10,6 +10,16 @@ Currently only 128x64-pixel screens with an address of 0x78 are supported with a
 
 The I2C peripherals are a bit different between the older F103 and the newer F303 (and F0, F4, L4, etc.) chips; I think that I've worked out how to get them running consistently on both, but the timing values are based off a mixture of guesswork and examples listed in ST's reference manuals. Fortunately, the SSD1306 is very forgiving when it comes to timings.
 
+# Code Structure
+
+The peripheral logic is mostly written into the C++ classes under `lib/` to demonstrate the concepts of inheritance in an embedded application. The file names reflect the peripheral or device which they are designed to interact with.
+
+The core program logic is located in `src/`. The `main` header and source files contain the core program structure, while the `global` files contain global declarations and definitions for their initial values. The `util` files currently only hold a method for initializing the chips' core clock speeds.
+
+Device-specific code relating to initial startup, hardware interrupts, linker configurations, and register macros are located in the `boot_s/`, `vector_tables/`, `ld/`, and `device_headers/` directories.
+
+The project is built using the arm-none-eabi GCC toolchain, and a Makefile is provided.
+
 # Boards
 
 Currently, only the STM32F103C8 and STM32F303K8 are supported.
